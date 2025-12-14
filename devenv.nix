@@ -26,7 +26,7 @@ in
 {
   packages =
     (with pkgs; [
-
+      goreleaser
     ])
     ++ [
       # git-quill
