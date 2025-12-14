@@ -37,6 +37,15 @@ jobs:
       - uses: actions/setup-go@v3
         with:
           go-version: ${{env.GO_VERSION}}
+      - name: Install Ollama
+        uses: ai-action/setup-ollama@v1
+      - name: Build Git Quill
+        run: go build -o git-quill cmd/git-quill/main.go
+      - name: Generate Release Header
+        run: |
+          ./git-quill tag --raw -p ollama -m gemma3:1b > header.md
+          cat header.md
+          echo 'RELEASE_NOTES_HEADER="$(cat header.md)"' >> $GITHUB_ENV
       - uses: go-semantic-release/action@v1
         with:
           hooks: goreleaser

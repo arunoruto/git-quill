@@ -43,6 +43,7 @@ changelog:
   #     - "^docs:"
   #     - "^test:"
 release:
+  header: "{{ .Env.RELEASE_NOTES_HEADER }}"
   footer: >-
     ---
 

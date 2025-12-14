@@ -171,6 +171,10 @@ func runCommit(args []string) {
 func runTag(args []string) {
 	cmd := flag.NewFlagSet("tag", flag.ExitOnError)
 	config := registerSharedFlags(cmd)
+
+	var raw bool
+	cmd.BoolVar(&raw, "raw", false, "Output raw markdown only (no instructions)")
+
 	if err := cmd.Parse(args); err != nil {
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
@@ -218,11 +222,15 @@ func runTag(args []string) {
 		os.Exit(1)
 	}
 
-	sageMsg := strings.ReplaceAll(msg, "\"", "\\\"")
-	fmt.Println("\n" + msg)
-	fmt.Println("\n------------------------------------------------")
-	fmt.Println("Create this tag now:")
-	fmt.Printf("git tag -a %s -m \"%s\"\n", tagName, sageMsg)
+	if raw {
+		fmt.Print(msg)
+	} else {
+		sageMsg := strings.ReplaceAll(msg, "\"", "\\\"")
+		fmt.Println("\n" + msg)
+		fmt.Println("\n------------------------------------------------")
+		fmt.Println("Create this tag now:")
+		fmt.Printf("git tag -a %s -m \"%s\"\n", tagName, sageMsg)
+	}
 }
 
 func resolveAI(cfg *Config) (ai.Provider, error) {
