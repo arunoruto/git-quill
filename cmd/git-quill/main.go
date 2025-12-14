@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
-	"slices"
 	"strings"
 	"time"
 
@@ -53,7 +52,6 @@ func setupLogger(verbose bool) {
 	opts := &tint.Options{
 		Level:      level,
 		TimeFormat: time.DateTime,
-		NoColor:    false,
 	}
 	logger := slog.New(tint.NewHandler(os.Stderr, opts))
 	slog.SetDefault(logger)
@@ -90,34 +88,50 @@ func runCommit(args []string) {
 
 	files, _ := git.GetStagedFiles()
 
-	providers := findAvailableProviders()
-	slog.Debug("Possible providers", strings.Join(providers, ", "), "")
-	config.Provider = strings.ToLower(config.Provider)
-	if config.Provider == "" {
-		config.Provider = ui.GumChoose("Select AI Provider", providers)
-	} else if !slices.Contains(providers, config.Provider) {
-		fmt.Printf("The given provider %s is not in the list of providers (%s)", config.Provider, strings.Join(providers, ", "))
-		os.Exit(0)
+	available := ai.GetAvailableProviders()
+	if len(available) == 0 {
+		fmt.Println("No AI tools found")
+		os.Exit(1)
 	}
 
-	slog.Debug("Fetching models...", "provider", config.Provider)
-	models, err := ai.ListModels(config.Provider)
-	if err == nil || len(models) > 0 {
-		config.Model = ui.GumFilter("Search Model...", models)
-	} else {
-		switch config.Provider {
-		case "ollama":
-			config.Model = "gemma3:4b"
-		default:
-			config.Model = "(default)"
+	var selectedProvider ai.Provider
+	if config.Provider == "" {
+		names := make([]string, len(available))
+		for i, p := range available {
+			names[i] = p.Name()
 		}
+		slog.Debug("Possible providers", strings.Join(names, ", "), "")
+		choice := ui.Select("Select AI Provider", names)
+		selectedProvider, _ = ai.GetProviderByName(choice)
+	} else {
+		var err error
+		selectedProvider, err = ai.GetProviderByName(config.Provider)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	}
+
+	if config.Model == "" {
+		slog.Debug("Fetching models...", "provider", config.Provider)
+		models, err := selectedProvider.ListModels()
+		if err == nil && len(models) > 0 {
+			config.Model = ui.Select("Select Model", models)
+		}
+	}
+
+	req := ai.Request{
+		Diff:        diff,
+		StagedFiles: files,
+		Model:       config.Model,
+		IsBrief:     brief,
 	}
 
 	slog.Debug("Running Commit", "provider", config.Provider, "model", config.Model, "brief", brief)
 	slog.Debug("generating commit message...")
-	msg, err := ai.GenerateMessage(config.Provider, config.Model, files, diff)
+	msg, err := selectedProvider.Generate(req)
 	if err != nil {
-		fmt.Printf("AI Error: %v\n", err)
+		fmt.Println("Error:", err)
 		os.Exit(1)
 	}
 
