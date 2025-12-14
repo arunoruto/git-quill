@@ -26,6 +26,7 @@ in
 {
   packages =
     (with pkgs; [
+      golangci-lint
       goreleaser
     ])
     ++ [

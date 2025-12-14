@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 
@@ -34,7 +33,10 @@ func main() {
 	mainCmd.BoolVar(&help, "h", false, "Show help")
 	mainCmd.BoolVar(&help, "help", false, "Show help")
 
-	mainCmd.Parse(os.Args[1:])
+	if err := mainCmd.Parse(os.Args[1:]); err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
 
 	if help {
 		printMainUsage()
@@ -127,7 +129,10 @@ func runCommit(args []string) {
 	config := registerSharedFlags(cmd)
 	var brief bool
 	cmd.BoolVar(&brief, "b", false, "Brief summary")
-	cmd.Parse(args)
+	if err := cmd.Parse(args); err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
 	setupLogger(config.Verbose)
 
 	diff, err := git.GetStagedDiff(20000)
@@ -166,7 +171,10 @@ func runCommit(args []string) {
 func runTag(args []string) {
 	cmd := flag.NewFlagSet("tag", flag.ExitOnError)
 	config := registerSharedFlags(cmd)
-	cmd.Parse(args)
+	if err := cmd.Parse(args); err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
 
 	setupLogger(config.Verbose)
 	slog.Debug("Running Tag", "provider", config.Provider)
@@ -255,21 +263,4 @@ func resolveAI(cfg *Config) (ai.Provider, error) {
 	}
 
 	return provider, nil
-}
-
-func hasStagedChanges() bool {
-	cmd := exec.Command("git", "diff", "--cached", "--quiet")
-	err := cmd.Run()
-	return err != nil
-}
-
-func findAvailableProviders() []string {
-	candidates := []string{"ollama", "opencode", "copilot", "gemini"}
-	var found []string
-	for _, p := range candidates {
-		if _, err := exec.LookPath(p); err == nil {
-			found = append(found, p)
-		}
-	}
-	return found
 }
