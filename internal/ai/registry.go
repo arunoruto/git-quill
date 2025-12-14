@@ -1,6 +1,9 @@
 package ai
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 var providers = []Provider{
 	Ollama{},
@@ -21,7 +24,7 @@ func GetAvailableProviders() []Provider {
 
 func GetProviderByName(name string) (Provider, error) {
 	for _, p := range providers {
-		if p.Name() == name {
+		if strings.EqualFold(p.Name(), name) {
 			return p, nil
 		}
 	}

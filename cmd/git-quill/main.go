@@ -22,20 +22,45 @@ type Config struct {
 }
 
 func main() {
-	if len(os.Args) < 2 {
+	mainCmd := flag.NewFlagSet("git-quill", flag.ExitOnError)
+
+	var listProviders bool
+	mainCmd.BoolVar(&listProviders, "list-providers", false, "List available AI providers")
+
+	var listModelsProvider string
+	mainCmd.StringVar(&listModelsProvider, "list-models", "", "List models for specific provider")
+
+	var help bool
+	mainCmd.BoolVar(&help, "h", false, "Show help")
+	mainCmd.BoolVar(&help, "help", false, "Show help")
+
+	mainCmd.Parse(os.Args[1:])
+
+	if help {
+		printMainUsage()
+		os.Exit(0)
+	} else if listProviders {
+		printProviders()
+		os.Exit(0)
+	} else if listModelsProvider != "" {
+		printModels(listModelsProvider)
+		os.Exit(0)
+	}
+
+	args := mainCmd.Args()
+
+	if len(args) < 1 {
 		printMainUsage()
 		os.Exit(1)
 	}
 
-	switch os.Args[1] {
+	switch args[0] {
 	case "commit":
-		runCommit(os.Args[2:])
+		runCommit(args[1:])
 	case "tag":
-		runTag(os.Args[2:])
-	case "-h", "--help", "help":
-		printMainUsage()
+		runTag(args[1:])
 	default:
-		fmt.Printf("Unknown command: %s\n", os.Args[1])
+		fmt.Printf("Unknown command: %s\n", args[0])
 		printMainUsage()
 		os.Exit(1)
 	}
@@ -62,6 +87,31 @@ func printMainUsage() {
 	fmt.Println("\nCommands:")
 	fmt.Println("\t commit Generate an AI commit message")
 	fmt.Println("\t tag    Generate an AI tag message")
+}
+
+func printProviders() {
+	providers := ai.GetAvailableProviders()
+	for _, p := range providers {
+		fmt.Println(strings.ToLower(p.Name()))
+	}
+}
+
+func printModels(providerName string) {
+	p, err := ai.GetProviderByName(providerName)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	models, err := p.ListModels()
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	for _, m := range models {
+		fmt.Println(m)
+	}
 }
 
 func registerSharedFlags(fs *flag.FlagSet) *Config {
