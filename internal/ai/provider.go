@@ -1,8 +1,9 @@
 package ai
 
 type Request struct {
-	Diff        string
-	StagedFiles string
+	Task        string // "commit" or "tag"
+	Diff        string // For commit: the diff. For tag: the commit log
+	StagedFiles string // Only for commit
 	Model       string
 	IsBrief     bool
 	UseEmoji    bool

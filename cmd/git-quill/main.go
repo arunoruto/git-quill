@@ -31,7 +31,7 @@ func main() {
 	case "commit":
 		runCommit(os.Args[2:])
 	case "tag":
-		fmt.Println("Tag generation feature coming soon!")
+		runTag(os.Args[2:])
 	case "-h", "--help", "help":
 		printMainUsage()
 	default:
@@ -88,39 +88,14 @@ func runCommit(args []string) {
 
 	files, _ := git.GetStagedFiles()
 
-	available := ai.GetAvailableProviders()
-	if len(available) == 0 {
-		fmt.Println("No AI tools found")
+	provider, err := resolveAI(config)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	var selectedProvider ai.Provider
-	if config.Provider == "" {
-		names := make([]string, len(available))
-		for i, p := range available {
-			names[i] = p.Name()
-		}
-		slog.Debug("Possible providers", strings.Join(names, ", "), "")
-		choice := ui.Select("Select AI Provider", names)
-		selectedProvider, _ = ai.GetProviderByName(choice)
-	} else {
-		var err error
-		selectedProvider, err = ai.GetProviderByName(config.Provider)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-	}
-
-	if config.Model == "" {
-		slog.Debug("Fetching models...", "provider", config.Provider)
-		models, err := selectedProvider.ListModels()
-		if err == nil && len(models) > 0 {
-			config.Model = ui.Select("Select Model", models)
-		}
-	}
-
 	req := ai.Request{
+		Task:        "commit",
 		Diff:        diff,
 		StagedFiles: files,
 		Model:       config.Model,
@@ -129,7 +104,7 @@ func runCommit(args []string) {
 
 	slog.Debug("Running Commit", "provider", config.Provider, "model", config.Model, "brief", brief)
 	slog.Debug("generating commit message...")
-	msg, err := selectedProvider.Generate(req)
+	msg, err := provider.Generate(req)
 	if err != nil {
 		fmt.Println("Error:", err)
 		os.Exit(1)
@@ -142,8 +117,94 @@ func runTag(args []string) {
 	cmd := flag.NewFlagSet("tag", flag.ExitOnError)
 	config := registerSharedFlags(cmd)
 	cmd.Parse(args)
+
 	setupLogger(config.Verbose)
 	slog.Debug("Running Tag", "provider", config.Provider)
+
+	tagName := "vX.Y.Z"
+	if len(cmd.Args()) > 0 {
+		tagName = cmd.Args()[0]
+	}
+
+	lastTag := git.GetLastTag()
+	slog.Debug("Found last tag", "tag", lastTag)
+
+	commits, err := git.GetCommitsSince(lastTag)
+	if err != nil {
+		fmt.Printf("Error reading git log: %v\n", err)
+		os.Exit(1)
+	}
+
+	if strings.TrimSpace(commits) == "" {
+		fmt.Printf("No new commits found since the last tag '%s'.\n", lastTag)
+		os.Exit(0)
+	}
+
+	provider, err := resolveAI(config)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	req := ai.Request{
+		Task:  "tag",
+		Diff:  commits,
+		Model: config.Model,
+	}
+
+	slog.Debug("Running tag", "provider", config.Provider, "model", config.Model)
+	slog.Debug("generating release notes since ", lastTag, "...")
+	msg, err := provider.Generate(req)
+	if err != nil {
+		fmt.Println("Error:", err)
+		os.Exit(1)
+	}
+
+	sageMsg := strings.ReplaceAll(msg, "\"", "\\\"")
+	fmt.Println("\n" + msg)
+	fmt.Println("\n------------------------------------------------")
+	fmt.Println("Create this tag now:")
+	fmt.Printf("git tag -a %s -m \"%s\"\n", tagName, sageMsg)
+}
+
+func resolveAI(cfg *Config) (ai.Provider, error) {
+	available := ai.GetAvailableProviders()
+	if len(available) == 0 {
+		return nil, fmt.Errorf("no AI providers found (install ollama, copilot, etc)")
+	}
+
+	var provider ai.Provider
+	var err error
+
+	if cfg.Provider == "" {
+		names := make([]string, len(available))
+		for i, p := range available {
+			names[i] = p.Name()
+		}
+		choice := ui.Select("Select AI Provider", names)
+		if choice == "" {
+			return nil, fmt.Errorf("selection cancelled")
+		}
+		provider, _ = ai.GetProviderByName(choice)
+		cfg.Provider = provider.Name()
+	} else {
+		provider, err = ai.GetProviderByName(cfg.Provider)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if cfg.Model == "" {
+		models, err := provider.ListModels()
+		if err == nil && len(models) > 0 {
+			cfg.Model = ui.Select("Select Model", models)
+			if cfg.Model == "" {
+				return nil, fmt.Errorf("selection cancelled")
+			}
+		}
+	}
+
+	return provider, nil
 }
 
 func hasStagedChanges() bool {

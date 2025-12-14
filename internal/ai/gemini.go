@@ -26,7 +26,7 @@ func (p Gemini) ListModels() ([]string, error) {
 }
 
 func (p Gemini) Generate(req Request) (string, error) {
-	fullPrompt := BuildPrompt(req)
+	fullPrompt := GeneratePrompt(req)
 
 	var args []string
 

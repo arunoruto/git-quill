@@ -42,7 +42,7 @@ func (p Opencode) ListModels() ([]string, error) {
 }
 
 func (p Opencode) Generate(req Request) (string, error) {
-	fullPrompt := BuildPrompt(req)
+	fullPrompt := GeneratePrompt(req)
 
 	model := req.Model
 	if model == "" {

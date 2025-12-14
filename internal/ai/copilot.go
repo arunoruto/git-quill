@@ -52,7 +52,7 @@ func (p Copilot) ListModels() ([]string, error) {
 }
 
 func (p Copilot) Generate(req Request) (string, error) {
-	fullPrompt := BuildPrompt(req)
+	fullPrompt := GeneratePrompt(req)
 
 	args := []string{"-s"}
 
