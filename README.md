@@ -6,7 +6,7 @@
 
 - **AI-powered commit messages:** Generate commit messages from your staged changes.
 - **AI-powered tag messages:** Generate release notes from the commits since your last tag.
-- **Multiple AI providers:** Supports Ollama, Opencode, Gemini, and Copilot.
+- **Multiple AI providers:** Supports Ollama, Opencode, Gemini, Copilot, and Apfel.
 - **Interactive UI:** Select your preferred AI provider and model through a simple and interactive UI.
 - **Brief and detailed summaries:** Choose between a brief or detailed summary for your commit messages.
 
@@ -72,6 +72,7 @@ git-quill tag -p ollama -m gemma3:4b
 -   [Opencode](https://www.opencode.ai/)
 -   [Gemini](https://gemini.google.com/)
 -   [Copilot](https://github.com/features/copilot)
+-   [Apfel](https://github.com/Arthur-Ficial/apfel)
 
 ## License
 
