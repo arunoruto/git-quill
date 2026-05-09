@@ -11,6 +11,7 @@ var providers = []Provider{
 	Gemini{},
 	Copilot{},
 	Claude{},
+	Apfel{},
 }
 
 func GetAvailableProviders() []Provider {
